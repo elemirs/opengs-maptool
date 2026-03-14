@@ -9,7 +9,8 @@ def create_slider(
     maximum: int,
     default: int,
     tick_interval: int = 100,
-    step: int = 100
+    step: int = 100,
+    display_scale: float = None
 ):
 
     row = QHBoxLayout()
@@ -25,9 +26,15 @@ def create_slider(
     slider.setTickInterval(tick_interval)
     slider.setSingleStep(step)
     row.addWidget(slider, stretch=1)
-    value_label = QLabel(str(default))
+
+    def format_value(v):
+        if display_scale is not None:
+            return f"{v * display_scale:.1f}"
+        return str(v)
+
+    value_label = QLabel(format_value(default))
     row.addWidget(value_label)
-    slider.valueChanged.connect(lambda v: value_label.setText(str(v)))
+    slider.valueChanged.connect(lambda v: value_label.setText(format_value(v)))
     return slider
 
 

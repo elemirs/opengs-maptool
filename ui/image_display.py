@@ -13,6 +13,10 @@ class ImageDisplay(QLabel):
         self._image = None
 
     def set_image(self, image):
+        if image is None:
+            self._image = None
+            self.clear()
+            return
         if image.mode != "RGBA":
             image = image.convert("RGBA")
         self._image = image

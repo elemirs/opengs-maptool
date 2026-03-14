@@ -1,287 +1,274 @@
 import config
 import numpy as np
-from collections import deque
 from PIL import Image
-from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import label as ndlabel
 from logic.numb_gen import NumberSeries
-
-used_colors = set()
+from logic.utils import (
+    clear_used_colors, color_from_id, create_region_map, make_progress_updater,
+    STEPS_PER_REGION_MAP
+)
 
 
 def generate_province_map(main_layout):
-    used_colors.clear()
+    clear_used_colors()
     main_layout.progress.setVisible(True)
-    main_layout.progress.setValue(10)
+    main_layout.progress.setValue(0)
 
-    boundary_image = main_layout.boundary_image_display.get_image()
-    land_image = main_layout.land_image_display.get_image()
+    territory_pmap = main_layout.territory_pmap
+    territory_data = main_layout.territory_data
+    masks = main_layout.cached_masks
+    density_arr = np.array(main_layout.density_image)
+    density_strength = main_layout.province_density_strength.value() / 10.0
+    exclude_ocean_density = main_layout.province_exclude_ocean_density.isChecked()
+    jagged_land = main_layout.province_jagged_land.isChecked()
+    jagged_ocean = main_layout.province_jagged_ocean.isChecked()
+    map_h, map_w = masks["map_h"], masks["map_w"]
 
-    if boundary_image is None and land_image is None:
-        raise ValueError(
-            "Need at least boundary OR ocean image to determine map size.")
+    total_land_provs = main_layout.land_slider.value()
+    total_ocean_provs = main_layout.ocean_slider.value()
+    lake_mask = masks.get("lake_mask")
 
-    # BOUNDARY MASK
-    if boundary_image is not None:
-        b_arr = np.array(boundary_image, copy=False)
+    # Separate territories by type
+    land_terrs = [d for d in territory_data if d["territory_type"] == "land"]
+    ocean_terrs = [d for d in territory_data if d["territory_type"] == "ocean"]
 
-        if b_arr.ndim == 3:
-            r, g, b = config.BOUNDARY_COLOR
-            boundary_mask = (
-                (b_arr[..., 0] == r) &
-                (b_arr[..., 1] == g) &
-                (b_arr[..., 2] == b)
-            )
+    # Build set of ocean territory indices for density exclusion
+    ocean_terr_indices = set()
+    if exclude_ocean_density:
+        for d in ocean_terrs:
+            ocean_terr_indices.add(d["_pmap_index"])
+
+    # Count pixels per territory for proportional distribution
+    unique, counts = np.unique(
+        territory_pmap[territory_pmap >= 0], return_counts=True)
+    pixel_counts = dict(zip(unique.tolist(), counts.tolist()))
+
+    # Compute average density weight per territory (darker = higher weight)
+    # Ocean territories get normalized weight when excluded
+    density_weights = {}
+    for idx in unique:
+        if int(idx) in ocean_terr_indices:
+            density_weights[int(idx)] = 1.0
         else:
-            (val,) = config.BOUNDARY_COLOR[:1]
-            boundary_mask = (b_arr == val)
+            terr_mask = territory_pmap == idx
+            mean_val = density_arr[terr_mask].mean()
+            density_weights[int(idx)] = (256.0 - mean_val) ** density_strength
 
-        map_h, map_w = boundary_mask.shape
+    land_alloc = _distribute(land_terrs, total_land_provs, pixel_counts,
+                             density_weights)
+    ocean_alloc = _distribute(ocean_terrs, total_ocean_provs, pixel_counts,
+                              density_weights)
 
-    else:
-        boundary_mask = None
+    all_terrs = ([(d, land_alloc[i]) for i, d in enumerate(land_terrs)] +
+                 [(d, ocean_alloc[i]) for i, d in enumerate(ocean_terrs)])
 
-    # LAND / SEA MASKS
-    if land_image is not None:
-        o_arr = np.array(land_image, copy=False)
-        sea_mask = is_sea_color(o_arr)
-        land_mask = ~sea_mask
+    # Progress: one step per territory + setup/finalize
+    total_steps = 2 + len(all_terrs) + 2
+    step = make_progress_updater(main_layout, total_steps)
+    step(2)
 
-        if boundary_mask is None:
-            map_h, map_w = sea_mask.shape
-    else:
-        if boundary_mask is None:
-            raise ValueError("Could not determine map size.")
-
-        sea_mask = np.zeros((map_h, map_w), dtype=bool)
-        land_mask = np.ones((map_h, map_w), dtype=bool)
-
-    if boundary_mask is None:
-        land_fill = land_mask
-        land_border = sea_mask
-
-        sea_fill = sea_mask
-        sea_border = land_mask
-    else:
-        land_fill = land_mask & ~boundary_mask
-        land_border = boundary_mask | sea_mask
-
-        sea_fill = sea_mask & ~boundary_mask
-        sea_border = boundary_mask | land_mask
-
-    # CREATE NUMBER SERIES
     series = NumberSeries(
         config.PROVINCE_ID_PREFIX,
         config.PROVINCE_ID_START,
         config.PROVINCE_ID_END
     )
 
-    # GENERATE PROVINCES
-    land_points = main_layout.land_slider.value()
-    sea_points = main_layout.ocean_slider.value()
+    province_pmap = np.full((map_h, map_w), -1, np.int32)
+    all_metadata = []
+    start_index = 0
+    boundary_mask = masks.get("boundary_mask")
+    if boundary_mask is None:
+        boundary_mask = np.zeros((map_h, map_w), dtype=bool)
 
-    land_map, land_meta, next_index = create_province_map(
-        land_fill, land_border, land_points, 0, "land", series
-    )
+    # Build territory lookup by _pmap_index
+    terr_by_index = {d["_pmap_index"]: d for d in territory_data}
 
-    main_layout.progress.setValue(50)
+    # Create lake provinces globally — each connected lake is one province,
+    # assigned to the territory that contains its center
+    if lake_mask is not None and lake_mask.any():
+        labeled, num_lakes = ndlabel(lake_mask)
+        for comp_id in range(1, num_lakes + 1):
+            comp_mask = labeled == comp_id
+            rid = series.get_id()
+            if rid is None:
+                continue
+            r, g, b = color_from_id(start_index, "lake")
+            ys, xs = np.where(comp_mask)
+            cx, cy = int(round(xs.mean())), int(round(ys.mean()))
+            terr_idx = int(territory_pmap[cy, cx])
+            terr = terr_by_index.get(terr_idx)
+            tid = terr["territory_id"] if terr else ""
+            lake_entry = {
+                "province_id": rid,
+                "province_type": "lake",
+                "R": r, "G": g, "B": b,
+                "x": xs.mean(),
+                "y": ys.mean(),
+                "territory_id": tid,
+                "_pmap_index": start_index,
+            }
+            province_pmap[comp_mask] = start_index
+            all_metadata.append(lake_entry)
+            if terr is not None:
+                terr.setdefault("province_ids", []).append(rid)
+            start_index += 1
 
-    if sea_points > 0 and land_image is not None:
-        sea_map, sea_meta, _ = create_province_map(
-            sea_fill, sea_border, sea_points, next_index, "ocean", series
+    for terr, prov_count in all_terrs:
+        terr_mask = territory_pmap == terr["_pmap_index"]
+        ptype = terr["territory_type"]
+        tid = terr["territory_id"]
+
+        # Subdivide non-lake pixels in this territory
+        if lake_mask is not None:
+            terr_fill = terr_mask & ~lake_mask & ~boundary_mask
+            terr_border = (terr_mask & boundary_mask) | (terr_mask & lake_mask)
+        else:
+            terr_fill = terr_mask & ~boundary_mask
+            terr_border = terr_mask & boundary_mask
+
+        if exclude_ocean_density and ptype == "ocean":
+            terr_density = None
+            terr_density_strength = 1.0
+        else:
+            terr_density = density_arr
+            terr_density_strength = density_strength
+
+        jagged = jagged_land if ptype == "land" else jagged_ocean
+        pmap, meta, next_index = create_region_map(
+            terr_fill, terr_border, prov_count, start_index,
+            ptype, series, "province_id", "province_type",
+            density=terr_density, density_strength=terr_density_strength,
+            jagged=jagged
         )
+
+        # Tag each province with its parent territory
+        for m in meta:
+            m["territory_id"] = tid
+
+        # Merge into global province pmap (don't overwrite lake provinces)
+        valid = (pmap >= 0) & (province_pmap < 0)
+        province_pmap[valid] = pmap[valid]
+
+        # Collect province_ids for territory (append to any existing lake ids)
+        existing = terr.get("province_ids", [])
+        terr["province_ids"] = existing + [m["province_id"] for m in meta]
+
+        all_metadata.extend(meta)
+        start_index = next_index
+        step(1)
+
+    # Build province image via color lookup
+    out = np.zeros((map_h, map_w, 3), np.uint8)
+    if all_metadata and start_index > 0:
+        color_lut = np.zeros((start_index, 3), np.uint8)
+        for d in all_metadata:
+            idx = d["_pmap_index"]
+            color_lut[idx] = (d["R"], d["G"], d["B"])
+        valid = province_pmap >= 0
+        out[valid] = color_lut[province_pmap[valid]]
+    province_image = Image.fromarray(out)
+    step(1)
+
+    # Assign terrain from terrain image, or use defaults
+    terrain_image = getattr(main_layout, "terrain_image", None)
+    if terrain_image is not None:
+        terrain_arr = np.array(terrain_image)
+        _assign_terrain(all_metadata, terrain_arr)
     else:
-        sea_map = np.full((map_h, map_w), -1, np.int32)
-        sea_meta = []
-
-    metadata = land_meta + sea_meta
-
-    province_image = combine_maps(
-        land_map, sea_map, metadata, land_mask, sea_mask
-    )
+        for prov in all_metadata:
+            ptype = prov["province_type"]
+            if ptype == "lake":
+                prov["province_terrain"] = config.DEFAULT_TERRAIN_LAKE
+            elif ptype == "ocean":
+                prov["province_terrain"] = config.DEFAULT_TERRAIN_OCEAN
+            else:
+                prov["province_terrain"] = config.DEFAULT_TERRAIN_LAND
 
     main_layout.province_image_display.set_image(province_image)
-    main_layout.province_data = metadata
+    main_layout.province_data = all_metadata
+    step(1)
 
     main_layout.progress.setValue(100)
     main_layout.button_exp_prov_img.setEnabled(True)
-    main_layout.button_exp_prov_csv.setEnabled(True)
-    main_layout.button_gen_territories.setEnabled(True)
+    main_layout.button_exp_prov_def.setEnabled(True)
+    main_layout.button_exp_terr_hist.setEnabled(True)
 
-    return province_image, metadata
-
-
-# BASIC UTILITIES
-def is_sea_color(arr):
-    r, g, b = config.OCEAN_COLOR
-    return (arr[..., 0] == r) & (arr[..., 1] == g) & (arr[..., 2] == b)
+    return province_image, all_metadata
 
 
-def _color_from_id(index: int, ptype: str, used_colors=used_colors):
-    rng = np.random.default_rng(index + 1)
+def _distribute(territories, total_provinces, pixel_counts,
+                density_weights=None):
+    """Distribute total_provinces proportionally across territories.
 
-    while True:
-        if ptype == "ocean":
-            r = rng.integers(0, 60)
-            g = rng.integers(0, 80)
-            b = rng.integers(100, 180)
+    When density_weights is provided, each territory's pixel count is scaled
+    by its density weight so darker regions receive more provinces.
+    Each territory gets at least 1 province.
+    """
+    n = len(territories)
+    if n == 0 or total_provinces <= 0:
+        return [0] * n
+
+    terr_pixels = [pixel_counts.get(d["_pmap_index"], 0) for d in territories]
+
+    if density_weights is not None:
+        terr_pixels = [px * density_weights.get(d["_pmap_index"], 1.0)
+                       for px, d in zip(terr_pixels, territories)]
+
+    total_pixels = sum(terr_pixels)
+
+    if total_pixels == 0:
+        return [1] * n
+
+    # Initial proportional allocation (minimum 1)
+    alloc = [max(1, round(px / total_pixels * total_provinces))
+             for px in terr_pixels]
+
+    # Adjust to match total (skip if more territories than provinces)
+    diff = sum(alloc) - total_provinces
+    if diff != 0 and total_provinces >= n:
+        # Sort by pixel count: shrink largest first, grow smallest first
+        indices = sorted(range(n), key=lambda i: terr_pixels[i],
+                         reverse=(diff > 0))
+        for i in indices:
+            if diff == 0:
+                break
+            if diff > 0 and alloc[i] > 1:
+                alloc[i] -= 1
+                diff -= 1
+            elif diff < 0:
+                alloc[i] += 1
+                diff += 1
+
+    return alloc
+
+
+def _assign_terrain(metadata, terrain_arr):
+    """Look up terrain color at each province center and assign province_terrain.
+
+    Enforces category constraints: land provinces only get land terrains,
+    ocean provinces only get naval terrains, lake provinces get lake terrain.
+    Falls back to the configured default for each province type.
+    """
+    h, w = terrain_arr.shape[:2]
+
+    # Build per-category lookups: (R, G, B) -> terrain name
+    land_lookup = {color: name for name, color in config.LAND_TERRAIN_TYPES.items()}
+    naval_lookup = {color: name for name, color in config.NAVAL_TERRAIN_TYPES.items()}
+    lake_lookup = {color: name for name, color in config.LAKE_TERRAIN_TYPES.items()}
+
+    for prov in metadata:
+        px = int(round(prov["x"]))
+        py = int(round(prov["y"]))
+        px = max(0, min(px, w - 1))
+        py = max(0, min(py, h - 1))
+        pixel = (int(terrain_arr[py, px, 0]),
+                 int(terrain_arr[py, px, 1]),
+                 int(terrain_arr[py, px, 2]))
+
+        ptype = prov["province_type"]
+        if ptype == "lake":
+            prov["province_terrain"] = lake_lookup.get(pixel, config.DEFAULT_TERRAIN_LAKE)
+        elif ptype == "ocean":
+            prov["province_terrain"] = naval_lookup.get(pixel, config.DEFAULT_TERRAIN_OCEAN)
         else:
-            r, g, b = map(int, rng.integers(0, 256, 3))
-
-        color = (int(r), int(g), int(b))
-        if color not in used_colors:
-            used_colors.add(color)
-            return color
-
-
-def generate_jitter_seeds(mask: np.ndarray, num_points: int):
-    if num_points <= 0:
-        return []
-
-    h, w = mask.shape
-    grid = max(1, int(np.sqrt(num_points)))
-
-    cell_h = h / grid
-    cell_w = w / grid
-    rng = np.random.default_rng()
-    seeds = []
-
-    for gy in range(grid):
-        y0 = int(gy * cell_h)
-        y1 = int((gy + 1) * cell_h)
-
-        for gx in range(grid):
-            x0 = int(gx * cell_w)
-            x1 = int((gx + 1) * cell_w)
-
-            cell = mask[y0:y1, x0:x1]
-            ys, xs = np.where(cell)
-
-            if xs.size == 0:
-                continue
-
-            i = rng.integers(xs.size)
-            seeds.append((x0 + xs[i], y0 + ys[i]))
-
-    return seeds
-
-
-def create_province_map(fill_mask, border_mask, num_points, start_index, ptype, series):
-    if num_points <= 0 or not fill_mask.any():
-        empty = np.full(fill_mask.shape, -1, np.int32)
-        return empty, [], start_index
-
-    seeds = generate_jitter_seeds(fill_mask, num_points)
-    seeds = [(x, y) for x, y in seeds if fill_mask[y, x]]
-
-    if not seeds:
-        empty = np.full(fill_mask.shape, -1, np.int32)
-        return empty, [], start_index
-
-    pmap, metadata = flood_fill(fill_mask, seeds, start_index, ptype, series)
-    assign_borders(pmap, border_mask)
-    finalize_metadata(metadata)
-
-    next_index = len(metadata)
-    return pmap, list(metadata.values()), next_index
-
-
-def flood_fill(fill_mask, seeds, start_index, ptype, series):
-    h, w = fill_mask.shape
-    pmap = np.full((h, w), -1, np.int32)
-
-    metadata = {}
-    q = deque()
-
-    neighbors = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-
-    for i, (sx, sy) in enumerate(seeds):
-        index = start_index + i
-        pid = series.get_id()
-
-        pmap[sy, sx] = index
-
-        r, g, b = _color_from_id(index, ptype)
-        metadata[index] = {
-            "province_id": pid,
-            "province_type": ptype,
-            "R": r, "G": g, "B": b,
-            "sum_x": sx,
-            "sum_y": sy,
-            "count": 1
-        }
-
-        q.append((sx, sy, index))
-
-    while q:
-        x, y, index = q.popleft()
-        d = metadata[index]
-
-        for dx, dy in neighbors:
-            nx = x + dx
-            ny = y + dy
-
-            if 0 <= nx < w and 0 <= ny < h:
-                if pmap[ny, nx] == -1 and fill_mask[ny, nx]:
-                    pmap[ny, nx] = index
-                    d["sum_x"] += nx
-                    d["sum_y"] += ny
-                    d["count"] += 1
-                    q.append((nx, ny, index))
-
-    return pmap, metadata
-
-
-def assign_borders(pmap, border_mask):
-    valid = pmap >= 0
-    if not valid.any() or not border_mask.any():
-        return
-
-    _, (ny, nx) = distance_transform_edt(~valid, return_indices=True)
-    bm = border_mask
-    pmap[bm] = pmap[ny[bm], nx[bm]]
-
-
-def finalize_metadata(metadata):
-    for d in metadata.values():
-        c = d["count"]
-        d["x"] = d["sum_x"] / c
-        d["y"] = d["sum_y"] / c
-        del d["sum_x"], d["sum_y"], d["count"]
-
-
-def combine_maps(land_map, sea_map, metadata, land_mask, sea_mask):
-    if land_map is not None and land_map.size > 0:
-        h, w = land_map.shape
-    else:
-        h, w = sea_map.shape
-
-    combined = np.full((h, w), -1, np.int32)
-
-    if land_map is not None:
-        lm = (land_map >= 0) & land_mask
-        combined[lm] = land_map[lm]
-
-    if sea_map is not None:
-        sm = (sea_map >= 0) & sea_mask
-        combined[sm] = sea_map[sm]
-
-    if (combined >= 0).any():
-        valid = combined >= 0
-        _, (ny, nx) = distance_transform_edt(~valid, return_indices=True)
-        missing = combined < 0
-        combined[missing] = combined[ny[missing], nx[missing]]
-
-    out = np.zeros((h, w, 3), np.uint8)
-
-    if not metadata:
-        return Image.fromarray(out)
-
-    color_lut = np.zeros((len(metadata), 3), np.uint8)
-
-    for index, d in enumerate(metadata):
-        color_lut[index] = (d["R"], d["G"], d["B"])
-
-    valid = combined >= 0
-    out[valid] = color_lut[combined[valid]]
-
-    return Image.fromarray(out)
+            prov["province_terrain"] = land_lookup.get(pixel, config.DEFAULT_TERRAIN_LAND)
