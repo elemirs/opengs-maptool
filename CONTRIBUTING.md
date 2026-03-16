@@ -28,7 +28,7 @@ There is no automated test suite, so every pull request should be manually verif
 
 Test with both land-only (no boundary image) and land + boundary image inputs to make sure nothing breaks.
 
-Example images are available in the `example_input/` folder.
+Example images are available in the `opengs_maptool/examples/input/` folder.
 
 ## Running the App
 

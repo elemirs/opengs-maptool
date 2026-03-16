@@ -17,9 +17,9 @@ Province and territory maps form the backbone of these games, defining the geogr
 
 ## Showcase
 Output territory Map:
-![example](/example_output/territores.png)
+![example](opengs_maptool/examples/output/territores.png)
 Output Province Map:
-![example2](/example_output/provinces.png)
+![example2](opengs_maptool/examples/output/provinces.png)
 
 
 ## How to install
@@ -41,7 +41,7 @@ The first tab takes an image that specifies the ocean and lake areas of the map.
 - **Lakes** must be RGB color (0, 255, 0)
 - Everything else is considered land
 
-See examples in the folder "example_input".
+See examples in the folder "opengs_maptool/examples/input".
 
 ### Boundary Image
 The second tab defines the bounds that the provinces and territories need to adhere to.
