@@ -1,7 +1,7 @@
-import config
+import opengs_maptool.config as config
 import numpy as np
-from logic.numb_gen import NumberSeries
-from logic.utils import (
+from opengs_maptool.logic.numb_gen import NumberSeries
+from opengs_maptool.logic.utils import (
     clear_used_colors, extract_masks, create_region_map, combine_maps,
     make_progress_updater, STEPS_PER_REGION_MAP
 )

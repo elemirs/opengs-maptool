@@ -1,4 +1,4 @@
-import config
+import opengs_maptool.config as config
 import numpy as np
 from PIL import Image
 

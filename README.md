@@ -32,7 +32,7 @@ Output Province Map:
 1. Clone the repository
 2. Download the necessary libraries by running "pip install -r requirements.txt" in your terminal, 
 inside the project directory
-3. Start project by running "python main.py"
+3. Start project by running "python -m opengs_maptool.main"
 
 ## How to use the tool
 ### Land Image

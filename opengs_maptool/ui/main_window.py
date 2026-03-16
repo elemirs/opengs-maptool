@@ -1,14 +1,14 @@
-import config
+import opengs_maptool.config as config
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QProgressBar, QTabWidget, QLabel
-from logic.province_generator import generate_province_map
-from logic.territory_generator import generate_territory_map
-from logic.import_module import import_image, import_density_image, import_terrain_image
-from logic.density_generator import normalize_density, equator_density
-from logic.export_module import (export_image, export_territory_definitions,
+from opengs_maptool.logic.province_generator import generate_province_map
+from opengs_maptool.logic.territory_generator import generate_territory_map
+from opengs_maptool.logic.import_module import import_image, import_density_image, import_terrain_image
+from opengs_maptool.logic.density_generator import normalize_density, equator_density
+from opengs_maptool.logic.export_module import (export_image, export_territory_definitions,
                                  export_territory_history,
                                  export_province_definitions)
-from ui.buttons import create_slider, create_button, create_checkbox
-from ui.image_display import ImageDisplay
+from opengs_maptool.ui.buttons import create_slider, create_button, create_checkbox
+from opengs_maptool.ui.image_display import ImageDisplay
 
 
 class MainWindow(QWidget):

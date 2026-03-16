@@ -34,7 +34,7 @@ Example images are available in the `opengs_maptool/examples/input/` folder.
 
 ```bash
 pip install -r requirements.txt
-python main.py
+python -m opengs_maptool.main
 ```
 
 ## Questions or Ideas?
