@@ -33,7 +33,7 @@ Example images are available in the `opengs_maptool/examples/input/` folder.
 ## Running the App
 
 ```bash
-pip install -r requirements.txt
+pip install .
 python -m opengs_maptool.main
 ```
 
