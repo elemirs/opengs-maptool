@@ -1,9 +1,9 @@
-import config
+import opengs_maptool.config as config
 import numpy as np
 from PIL import Image
 from scipy.ndimage import label as ndlabel
-from logic.numb_gen import NumberSeries
-from logic.utils import (
+from opengs_maptool.logic.numb_gen import NumberSeries
+from opengs_maptool.logic.utils import (
     clear_used_colors, color_from_id, create_region_map, make_progress_updater,
     STEPS_PER_REGION_MAP
 )
