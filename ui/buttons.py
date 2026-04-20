@@ -45,7 +45,15 @@ def create_button(
 ):
     button = QPushButton(label_text)
     button.clicked.connect(callback_function)
-    parent_layout.addWidget(button)
+    # Align to center prevents it from stretching the entire width of the layout
+    try:
+        from PyQt6.QtWidgets import QVBoxLayout
+        if isinstance(parent_layout, QVBoxLayout):
+            parent_layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignHCenter)
+        else:
+            parent_layout.addWidget(button)
+    except:
+        parent_layout.addWidget(button)
     return button
 
 

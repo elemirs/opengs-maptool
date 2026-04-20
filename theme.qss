@@ -1,145 +1,169 @@
-/* theme.qss - Liquid Glass Theme for PyQt6 */
+/* theme.qss - Modern Liquid Glass Wizard Theme */
 
-#mainWindow {
-    /* Beautiful dark gradient for liquid glass background */
-    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                                stop: 0 #1B0E38, 
-                                stop: 0.3 #34125B, 
-                                stop: 0.7 #174276, 
-                                stop: 1 #081B34);
+QMainWindow, #mainWindow {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #120A27, stop:0.5 #1C274E, stop:1 #0F121C);
 }
 
 QWidget {
-    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #f1f5f9;
-    font-size: 14px;
 }
 
-QLabel {
-    background: transparent;
-    color: #e2e8f0;
+#sidebar {
+    background-color: rgba(0, 0, 0, 0.4);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#logo {
+    font-size: 26px;
+    font-weight: 800;
+    color: #ffffff;
+    padding: 10px 0 20px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    letter-spacing: 2px;
+}
+
+#stepLabel {
+    color: rgba(255,255,255,0.4);
+    font-weight: normal;
+    font-size: 15px;
+    margin: 8px 0;
+    border-left: 4px solid transparent;
+    padding-left: 15px;
+}
+
+#contentContainer {
+    background-color: transparent;
+}
+
+#instructionLabel {
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    background-color: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 15px;
+}
+
+#pageTitle {
+    font-size: 36px;
+    font-weight: 900;
+    color: white;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+#bigButton {
+    background: rgba(255,255,255,0.03);
+    border: 2px solid rgba(255,255,255,0.05);
+    border-radius: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+}
+#bigButton:hover {
+    background: rgba(10, 132, 255, 0.1);
+    border: 2px solid #0A84FF;
+    transform: scale(1.05);
 }
 
 #imageDisplay {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+}
+
+QPushButton {
+    background-color: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-}
-
-QTabWidget::pane {
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    margin-top: -1px;
-}
-
-QTabWidget::tab-bar {
-    left: 10px; 
-}
-
-QTabBar::tab {
-    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgba(255, 255, 255, 0.1), stop: 1 rgba(255, 255, 255, 0.03));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 10px 25px;
-    margin-right: 4px;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    color: rgba(255, 255, 255, 0.7);
-}
-
-QTabBar::tab:selected {
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-bottom-color: transparent;
+    padding: 10px 24px;
     color: #ffffff;
+    font-size: 14px;
     font-weight: bold;
 }
 
-QTabBar::tab:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-/* Glass Buttons */
-QPushButton {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgba(255, 255, 255, 0.15), stop: 1 rgba(255, 255, 255, 0.05));
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 10px 20px;
-    color: #ffffff;
-    font-weight: 600;
-}
-
 QPushButton:hover {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgba(255, 255, 255, 0.25), stop: 1 rgba(255, 255, 255, 0.1));
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    background-color: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 QPushButton:pressed {
-    background-color: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 QPushButton:disabled {
-    background-color: rgba(255, 255, 255, 0.02);
-    color: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.3);
+    border: none;
 }
 
-/* Sliders */
+#navButtonAction {
+    background-color: #0A84FF;
+    border: none;
+    font-size: 16px;
+    padding: 12px 30px;
+}
+#navButtonAction:hover {
+    background-color: #0070E0;
+}
+
+#navButton {
+    background-color: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 16px;
+    padding: 12px 30px;
+}
+
 QSlider::groove:horizontal {
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: none;
     height: 6px;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.5);
     border-radius: 3px;
 }
-
 QSlider::handle:horizontal {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #ffffff, stop:1 #e0e0e0);
-    border: 1px solid rgba(0, 0, 0, 0.5);
-    width: 16px;
-    height: 16px;
+    background: #0A84FF;
+    width: 18px;
+    height: 18px;
     margin: -6px 0;
-    border-radius: 8px;
+    border-radius: 9px;
 }
-
 QSlider::handle:horizontal:hover {
-    background: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    box-shadow: 0px 0px 10px rgba(255,255,255,0.5); 
+    background: #4CABFF;
+    box-shadow: 0px 0px 10px rgba(10, 132, 255, 0.5); 
 }
 
-/* Checkbox */
 QCheckBox {
     spacing: 12px;
+    font-size: 14px;
+    color: #cbd5e1;
 }
-
 QCheckBox::indicator {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.3);
 }
-
 QCheckBox::indicator:checked {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #8a2be2, stop: 1 #4169e1);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background-color: #0A84FF;
+    border: 2px solid #0A84FF;
 }
-
 QCheckBox::indicator:hover {
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    border: 2px solid rgba(255,255,255,0.4);
 }
 
-/* Progress bar */
 QProgressBar {
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: none;
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.4);
     text-align: center;
-    color: white;
+    color: transparent; /* hide text if needed, or keep white */
+    height: 12px;
 }
-
 QProgressBar::chunk {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #8a2be2, stop: 1 #4169e1);
+    background-color: #0A84FF;
     border-radius: 8px;
 }

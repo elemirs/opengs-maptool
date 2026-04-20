@@ -17,12 +17,11 @@ def import_image(layout, text, image_display):
     imported_image = Image.open(path).convert("RGBA")
     image_display.set_image(imported_image)
 
-    # When importing a new land image, reset density (dimensions may differ)
-    if image_display is layout.land_image_display:
-        layout.density_image = None
-        layout.density_image_display.set_image(None)
-        layout.button_normalize_density.setEnabled(True)
-        layout.button_equator_density.setEnabled(True)
+    # When importing a new land or boundary image, reset density (dimensions may differ)
+    layout.density_image = None
+    layout.density_image_display.set_image(None)
+    layout.button_normalize_density.setEnabled(True)
+    layout.button_equator_density.setEnabled(True)
 
     layout.check_territory_ready()
 
