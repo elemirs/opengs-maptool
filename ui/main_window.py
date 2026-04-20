@@ -16,6 +16,7 @@ class MainWindow(QWidget):
         super().__init__()
 
         # MAIN LAYOUT
+        self.setObjectName("mainWindow")
         self.setWindowTitle(config.TITLE)
         self.setMinimumSize(800, 600)
         self.resize(config.WINDOW_SIZE_WIDTH,
@@ -33,21 +34,26 @@ class MainWindow(QWidget):
         self.progress.setMaximum(100)
         self.progress.setValue(0)
 
-        self.label_version = QLabel("Version "+config.VERSION)
+        self.label_version = QLabel("Sürüm: "+config.VERSION)
         main_layout.addWidget(self.label_version)
 
         # TAB1 LAND IMAGE
         self.land_tab = QWidget()
         self.land_image_display = ImageDisplay()
         land_tab_layout = QVBoxLayout(self.land_tab)
+        
+        land_instruction = QLabel("🎯 Adım 1: Karaları, okyanusları ve gölleri belirten temel haritanızı yükleyin.\n(Okyanus: RGB(5,20,18), Göl: RGB(0,255,0))")
+        land_instruction.setStyleSheet("color: #cbd5e1; font-weight: bold; margin-bottom: 5px;")
+        land_tab_layout.addWidget(land_instruction)
+        
         land_tab_layout.addWidget(self.land_image_display)
-        self.tabs.addTab(self.land_tab, "Land Image")
+        self.tabs.addTab(self.land_tab, "1. Temel Harita")
 
         # Buttons
         create_button(land_tab_layout,
-                      "Import Land Image",
+                      "Temel Harita Yükle",
                       lambda: import_image(self,
-                                           "Import Land Image",
+                                           "Temel Harita Yükle",
                                            self.land_image_display))
 
         # State
@@ -57,22 +63,32 @@ class MainWindow(QWidget):
         self.boundary_tab = QWidget()
         self.boundary_image_display = ImageDisplay()
         boundary_tab_layout = QVBoxLayout(self.boundary_tab)
+
+        boundary_instruction = QLabel("🎯 Adım 2: Varsa ülke veya eyalet sınırlarınızı belirten siyah çizgili (RGB: 0,0,0) görseli yükleyin.")
+        boundary_instruction.setStyleSheet("color: #cbd5e1; font-weight: bold; margin-bottom: 5px;")
+        boundary_tab_layout.addWidget(boundary_instruction)
+
         boundary_tab_layout.addWidget(self.boundary_image_display)
-        self.tabs.addTab(self.boundary_tab, "Boundary Image")
+        self.tabs.addTab(self.boundary_tab, "2. Sınırlar")
 
         # Buttons
         create_button(boundary_tab_layout,
-                      "Import Boundary Image",
+                      "Sınır Görselini Yükle",
                       lambda: import_image(self,
-                                           "Import Boundary Image",
+                                           "Sınır Görselini Yükle",
                                            self.boundary_image_display))
 
         # TAB3 DENSITY IMAGE
         self.density_tab = QWidget()
         self.density_image_display = ImageDisplay()
         density_tab_layout = QVBoxLayout(self.density_tab)
+
+        density_instruction = QLabel("🎯 Adım 3 (Opsiyonel): Hangi alanların daha yoğun/küçük vilayetlere sahip olacağını kontrol eden yoğunluk görselini yükleyin.")
+        density_instruction.setStyleSheet("color: #cbd5e1; font-weight: bold; margin-bottom: 5px;")
+        density_tab_layout.addWidget(density_instruction)
+
         density_tab_layout.addWidget(self.density_image_display)
-        self.tabs.addTab(self.density_tab, "Density Image")
+        self.tabs.addTab(self.density_tab, "3. Yoğunluk")
 
         # Buttons
         density_preset_row = QHBoxLayout()
@@ -80,35 +96,40 @@ class MainWindow(QWidget):
 
         self.button_normalize_density = create_button(
             density_preset_row,
-            "Normalize Density",
+            "Normal Dağılım",
             lambda: normalize_density(self))
         self.button_normalize_density.setEnabled(False)
 
         self.button_equator_density = create_button(
             density_preset_row,
-            "Equator Distribution",
+            "Ekvatoral Dağılım",
             lambda: equator_density(self))
         self.button_equator_density.setEnabled(False)
 
         create_button(density_tab_layout,
-                      "Import Density Image",
+                      "Yoğunluk Görseli Yükle",
                       lambda: import_density_image(self))
 
         self.territory_exclude_ocean_density = create_checkbox(
-            density_tab_layout, "Territory Exclude Ocean")
+            density_tab_layout, "Bölge Üretiminde Okyanusu Yoksay")
 
         self.province_exclude_ocean_density = create_checkbox(
-            density_tab_layout, "Province Exclude Ocean")
+            density_tab_layout, "Vilayet Üretiminde Okyanusu Yoksay")
 
         # TAB4 TERRAIN IMAGE
         self.terrain_tab = QWidget()
         self.terrain_image_display = ImageDisplay()
         terrain_tab_layout = QVBoxLayout(self.terrain_tab)
+
+        terrain_instruction = QLabel("🎯 Adım 4 (Opsiyonel): Orman, dağ, çöl vb. arazileri özel renklerle atamak için arazi görselini yükleyin.")
+        terrain_instruction.setStyleSheet("color: #cbd5e1; font-weight: bold; margin-bottom: 5px;")
+        terrain_tab_layout.addWidget(terrain_instruction)
+
         terrain_tab_layout.addWidget(self.terrain_image_display)
-        self.tabs.addTab(self.terrain_tab, "Terrain Image")
+        self.tabs.addTab(self.terrain_tab, "4. Arazi")
 
         create_button(terrain_tab_layout,
-                      "Import Terrain Image",
+                      "Arazi Görselini Yükle",
                       lambda: import_terrain_image(self))
 
         # State
@@ -118,15 +139,20 @@ class MainWindow(QWidget):
         self.territory_tab = QWidget()
         self.territory_image_display = ImageDisplay()
         territory_tab_layout = QVBoxLayout(self.territory_tab)
+
+        territory_instruction = QLabel("🎯 Adım 5: Haritadaki temel ana bölgeleri (Territory) üretin.")
+        territory_instruction.setStyleSheet("color: #cbd5e1; font-weight: bold; margin-bottom: 5px;")
+        territory_tab_layout.addWidget(territory_instruction)
+
         territory_tab_layout.addWidget(self.territory_image_display)
-        self.tabs.addTab(self.territory_tab, "Territory Image")
+        self.tabs.addTab(self.territory_tab, "5. Bölge Üretimi")
 
         button_territory_row = QHBoxLayout()
         territory_tab_layout.addLayout(button_territory_row)
 
         # Buttons
         self.territory_land_slider = create_slider(territory_tab_layout,
-                                                   "Territory Land Density:",
+                                                   "Kara Bölgesi Sayısı:",
                                                    config.LAND_TERRITORIES_MIN,
                                                    config.LAND_TERRITORIES_MAX,
                                                    config.LAND_TERRITORIES_DEFAULT,
@@ -134,7 +160,7 @@ class MainWindow(QWidget):
                                                    config.LAND_TERRITORIES_STEP)
 
         self.territory_ocean_slider = create_slider(territory_tab_layout,
-                                                    "Territory Ocean Density:",
+                                                    "Okyanus Bölgesi Sayısı:",
                                                     config.OCEAN_TERRITORIES_MIN,
                                                     config.OCEAN_TERRITORIES_MAX,
                                                     config.OCEAN_TERRITORIES_DEFAULT,
@@ -149,7 +175,7 @@ class MainWindow(QWidget):
 
         self.territory_density_strength = create_slider(
             density_slider_col,
-            "Density Strength:",
+            "Yoğunluk Çarpanı:",
             config.DENSITY_STRENGTH_MIN,
             config.DENSITY_STRENGTH_MAX,
             config.DENSITY_STRENGTH_DEFAULT,
@@ -161,29 +187,29 @@ class MainWindow(QWidget):
         territory_density_row.addLayout(jagged_col)
 
         self.territory_jagged_land = create_checkbox(
-            jagged_col, "Jagged Land Borders")
+            jagged_col, "Doğal Kara Sınırları (Tırtıklı)")
         self.territory_jagged_ocean = create_checkbox(
-            jagged_col, "Jagged Ocean Borders")
+            jagged_col, "Doğal Okyanus Sınırları (Tırtıklı)")
 
         self.button_gen_territories = create_button(territory_tab_layout,
-                                                    "Generate Territories",
+                                                    "Bölgeleri Oluştur",
                                                     lambda: generate_territory_map(self))
         self.button_gen_territories.setEnabled(False)
 
         self.button_exp_terr_img = create_button(button_territory_row,
-                                                 "Export Territory Image",
+                                                 "Bölge Haritasını Dışa Aktar",
                                                  lambda: export_image(self,
                                                                       self.territory_image_display.get_image(),
-                                                                      "Export Territory Image"))
+                                                                      "Bölge Haritasını Dışa Aktar"))
         self.button_exp_terr_img.setEnabled(False)
 
         self.button_exp_terr_def = create_button(button_territory_row,
-                                                 "Export Territory Definitions",
+                                                 "Bölge Verilerini Dışa Aktar",
                                                  lambda: export_territory_definitions(self))
         self.button_exp_terr_def.setEnabled(False)
 
         self.button_exp_terr_hist = create_button(button_territory_row,
-                                                  "Export Territory History",
+                                                  "Bölge Geçmişini Dışa Aktar",
                                                   lambda: export_territory_history(self))
         self.button_exp_terr_hist.setEnabled(False)
 
@@ -191,14 +217,19 @@ class MainWindow(QWidget):
         self.province_tab = QWidget()
         self.province_image_display = ImageDisplay()
         province_tab_layout = QVBoxLayout(self.province_tab)
+
+        province_instruction = QLabel("🎯 Adım 6: Nihai adım olarak bölgeleri içerecek küçük vilayetleri (Province) üretin.")
+        province_instruction.setStyleSheet("color: #cbd5e1; font-weight: bold; margin-bottom: 5px;")
+        province_tab_layout.addWidget(province_instruction)
+
         province_tab_layout.addWidget(self.province_image_display)
-        self.tabs.addTab(self.province_tab, "Province Image")
+        self.tabs.addTab(self.province_tab, "6. Vilayet Üretimi")
         button_row = QHBoxLayout()
         province_tab_layout.addLayout(button_row)
 
         # Buttons
         self.land_slider = create_slider(province_tab_layout,
-                                         "Land province Density:",
+                                         "Kara Vilayeti Sayısı:",
                                          config.LAND_PROVINCES_MIN,
                                          config.LAND_PROVINCES_MAX,
                                          config.LAND_PROVINCES_DEFAULT,
@@ -206,7 +237,7 @@ class MainWindow(QWidget):
                                          config.LAND_PROVINCES_STEP)
 
         self.ocean_slider = create_slider(province_tab_layout,
-                                          "Ocean province Density",
+                                          "Okyanus Vilayeti Sayısı:",
                                           config.OCEAN_PROVINCES_MIN,
                                           config.OCEAN_PROVINCES_MAX,
                                           config.OCEAN_PROVINCES_DEFAULT,
@@ -221,7 +252,7 @@ class MainWindow(QWidget):
 
         self.province_density_strength = create_slider(
             prov_density_slider_col,
-            "Density Strength:",
+            "Yoğunluk Çarpanı:",
             config.DENSITY_STRENGTH_MIN,
             config.DENSITY_STRENGTH_MAX,
             config.DENSITY_STRENGTH_DEFAULT,
@@ -233,24 +264,24 @@ class MainWindow(QWidget):
         province_density_row.addLayout(prov_jagged_col)
 
         self.province_jagged_land = create_checkbox(
-            prov_jagged_col, "Jagged Land Borders")
+            prov_jagged_col, "Doğal Kara Sınırları (Tırtıklı)")
         self.province_jagged_ocean = create_checkbox(
-            prov_jagged_col, "Jagged Ocean Borders")
+            prov_jagged_col, "Doğal Okyanus Sınırları (Tırtıklı)")
 
         self.button_gen_prov = create_button(province_tab_layout,
-                                             "Generate Provinces",
+                                             "Vilayetleri Oluştur",
                                              lambda: generate_province_map(self))
         self.button_gen_prov.setEnabled(False)
 
         self.button_exp_prov_img = create_button(button_row,
-                                                 "Export Province Image",
+                                                 "Vilayet Haritasını Dışa Aktar",
                                                  lambda: export_image(self,
                                                                       self.province_image_display.get_image(),
-                                                                      "Export Province Image"))
+                                                                      "Vilayet Haritasını Dışa Aktar"))
         self.button_exp_prov_img.setEnabled(False)
 
         self.button_exp_prov_def = create_button(button_row,
-                                                  "Export Province Definitions",
+                                                  "Vilayet Verilerini Dışa Aktar",
                                                   lambda: export_province_definitions(self))
         self.button_exp_prov_def.setEnabled(False)
 

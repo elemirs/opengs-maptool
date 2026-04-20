@@ -1,6 +1,7 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 
 # IDE
 .idea/
@@ -8,10 +9,18 @@ __pycache__/
 *.iml
 
 # Virtual environment
+venv/
 .venv/
+env/
+ENV/
+
+# Output and temp files
+*.log
+*.sqlite3
+.DS_Store
 
 # Windows Zone.Identifier files
 *:Zone.Identifier
 
-# Claude
+# AI artifacts
 CLAUDE.md

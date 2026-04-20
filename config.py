@@ -1,5 +1,5 @@
 # Main Window
-TITLE = "OpenGS - Map Tool"
+TITLE = "OpenGS - Harita Üretim Aracı"
 WINDOW_SIZE_WIDTH = 1100
 WINDOW_SIZE_HEIGHT = 950
 VERSION = "0.3"
