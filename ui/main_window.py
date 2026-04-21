@@ -60,6 +60,7 @@ class MainWindow(QWidget):
         sidebar_layout.addStretch()
         
         version_lbl = QLabel(f"Sürüm: {config.VERSION}")
+        version_lbl.setProperty("i18n", "lbl_version")
         version_lbl.setStyleSheet("color: rgba(255,255,255,0.4);")
         version_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sidebar_layout.addWidget(version_lbl)
@@ -542,7 +543,11 @@ class MainWindow(QWidget):
         for lbl in self.findChildren(QLabel):
             key = lbl.property("i18n")
             if key:
-                lbl.setText(t(self.current_language, key))
+                import config
+                if key == "lbl_version":
+                    lbl.setText(f"{t(self.current_language, key)}: {config.VERSION}")
+                else:
+                    lbl.setText(t(self.current_language, key))
                 
         for btn in self.findChildren(QPushButton):
             key = btn.property("i18n")

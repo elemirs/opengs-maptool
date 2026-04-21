@@ -11,6 +11,7 @@ translations = {
     "lbl_step4": {"en": "4. Terrain (Opt.)", "tr": "4. Arazi (Ops.)"},
     "lbl_step5": {"en": "5. Territory Gen.", "tr": "5. Bölge Üretimi"},
     "lbl_step6": {"en": "6. Province Gen.", "tr": "6. Vilayet Üretimi"},
+    "lbl_version": {"en": "Version", "tr": "Sürüm"},
     
     "lbl_step1_b": {"en": "1. Boundaries & Sea", "tr": "1. Harita ve Deniz Boyama"},
     "lbl_step2_b": {"en": "2. Territory Gen.", "tr": "2. Bölge Üretimi"},
