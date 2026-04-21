@@ -25,6 +25,7 @@ def create_slider(
     slider.setValue(default)
     slider.setTickInterval(tick_interval)
     slider.setSingleStep(step)
+    slider.title_label = label  # Save reference for i18n
     row.addWidget(slider, stretch=1)
 
     def format_value(v):
