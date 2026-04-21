@@ -354,17 +354,24 @@ def extract_masks(boundary_image, land_image):
     # BOUNDARY MASK
     if boundary_image is not None:
         b_arr = np.array(boundary_image, copy=False)
+        sea_mask_b = is_sea_color(b_arr)
+        lake_mask_b = is_lake_color(b_arr)
 
         if b_arr.ndim == 3:
             r, g, b = config.BOUNDARY_COLOR
-            boundary_mask = (
-                (b_arr[..., 0] == r) &
-                (b_arr[..., 1] == g) &
-                (b_arr[..., 2] == b)
-            )
+            diff = np.abs(b_arr[..., 0].astype(int) - r) + \
+                   np.abs(b_arr[..., 1].astype(int) - g) + \
+                   np.abs(b_arr[..., 2].astype(int) - b)
+            
+            boundary_mask = diff < 200  # Mathematical threshold for anti-aliasing
+            if b_arr.shape[-1] == 4:
+                boundary_mask = boundary_mask & (b_arr[..., 3] > 64) # Must not be transparent
         else:
             (val,) = config.BOUNDARY_COLOR[:1]
-            boundary_mask = (b_arr == val)
+            boundary_mask = np.abs(b_arr.astype(int) - val) < 80
+
+        # Enforce that sea and lake colors can NEVER be boundary, even if they are very dark!
+        boundary_mask = boundary_mask & ~sea_mask_b & ~lake_mask_b
 
         map_h, map_w = boundary_mask.shape
     else:
@@ -383,9 +390,15 @@ def extract_masks(boundary_image, land_image):
         if boundary_mask is None:
             raise ValueError("Could not determine map size.")
 
-        sea_mask = np.zeros((map_h, map_w), dtype=bool)
-        lake_mask = np.zeros((map_h, map_w), dtype=bool)
-        land_mask = np.ones((map_h, map_w), dtype=bool)
+        b_arr = np.array(boundary_image, copy=False)
+        sea_mask = is_sea_color(b_arr)
+        lake_mask = is_lake_color(b_arr)
+
+        if not sea_mask.any():
+            # If the user didn't paint any sea, we treat the entire walkable area as land.
+            sea_mask = np.zeros((map_h, map_w), dtype=bool)
+                
+        land_mask = ~sea_mask
 
     if boundary_mask is None:
         land_fill = land_mask

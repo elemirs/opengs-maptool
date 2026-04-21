@@ -101,6 +101,8 @@ class MainWindow(QWidget):
         # --- STATE ---
         self.density_image = None
         self.terrain_image = None
+        self.workflow_mode = "standard"
+        self.active_steps = [1, 2, 3, 4, 5, 6]
         
         # --- SETUP WIZARD PAGES ---
         self.setup_welcome_page()
@@ -133,12 +135,12 @@ class MainWindow(QWidget):
         btn_stand = QPushButton("🌍 Su ve Kara \n(Standart Harita)")
         btn_stand.setFixedSize(280, 180)
         btn_stand.setObjectName("bigButton")
-        btn_stand.clicked.connect(lambda: self.go_to_step(1))
+        btn_stand.clicked.connect(lambda: self.start_workflow("standard"))
         
-        btn_land = QPushButton("⛰️ Sadece Kara \n(Denizsiz, Sınır Çizgili)")
+        btn_land = QPushButton("⛰️ Sadece Kara\n(Akıllı Boyama Sistemi)")
         btn_land.setFixedSize(280, 180)
         btn_land.setObjectName("bigButton")
-        btn_land.clicked.connect(lambda: self.go_to_step(2))
+        btn_land.clicked.connect(lambda: self.start_workflow("boundary_only"))
         
         btns.addStretch()
         btns.addWidget(btn_stand)
@@ -167,14 +169,56 @@ class MainWindow(QWidget):
         page = QWidget()
         layout = QVBoxLayout(page)
         self.boundary_image_display = ImageDisplay()
+        self.boundary_image_display.on_click_callback = self.on_boundary_click
         
-        inst = QLabel("🎯 Adım 2: Varsa ülke veya eyalet sınırlarınızı belirten siyah çizgili (RGB: 0,0,0) görseli yükleyin.")
-        inst.setObjectName("instructionLabel")
-        layout.addWidget(inst)
+        self.boundary_inst = QLabel("🎯 Adım 2: Varsa ülke veya eyalet sınırlarınızı belirten siyah çizgili (RGB: 0,0,0) görseli yükleyin.")
+        self.boundary_inst.setObjectName("instructionLabel")
+        layout.addWidget(self.boundary_inst)
         layout.addWidget(self.boundary_image_display)
         
         create_button(layout, "Sınır Görselini Yükle", lambda: import_image(self, "Sınır Görselini Yükle", self.boundary_image_display))
         self.stacked.addWidget(page)
+        
+    def on_boundary_click(self, x, y):
+        input_image = self.boundary_image_display.get_image()
+        if not input_image:
+            return
+        
+        import numpy as np
+        from scipy.ndimage import label as ndlabel
+        from PIL import Image
+        
+        arr = np.array(input_image)
+        
+        r, g, b = config.BOUNDARY_COLOR
+        diff = np.abs(arr[..., 0].astype(int) - r) + \
+               np.abs(arr[..., 1].astype(int) - g) + \
+               np.abs(arr[..., 2].astype(int) - b)
+        boundary_mask = diff < 200
+        if arr.shape[-1] == 4:
+            boundary_mask = boundary_mask & (arr[..., 3] > 64)
+            
+        if boundary_mask[y, x]:
+            return # Hit boundary line
+        
+        inv_bound = ~boundary_mask
+        labeled, _ = ndlabel(inv_bound)
+        click_label = labeled[y, x]
+        if click_label == 0:
+            return
+            
+        ocean_mask = labeled == click_label
+        
+        # Color it Ocean Blue
+        arr[ocean_mask, 0] = 5
+        arr[ocean_mask, 1] = 20
+        arr[ocean_mask, 2] = 18
+        if arr.shape[-1] == 4:
+            arr[ocean_mask, 3] = 255
+            
+        new_img = Image.fromarray(arr)
+        self.boundary_image_display.set_image(new_img)
+        self.check_territory_ready()
         
     def setup_density_page(self):
         page = QWidget()
@@ -289,23 +333,32 @@ class MainWindow(QWidget):
         self.button_exp_prov_def.setEnabled(False)
         self.stacked.addWidget(page)
         
-    def go_to_step(self, index):
-        self.stacked.setCurrentIndex(index)
+    def start_workflow(self, mode):
+        self.workflow_mode = mode
+        if mode == "standard":
+            self.active_steps = [1, 2, 3, 4, 5, 6]
+            self.stacked.setCurrentIndex(1)
+        else:
+            self.active_steps = [2, 5, 6]
+            self.stacked.setCurrentIndex(2)
         self.update_ui()
         
     def next_step(self):
         idx = self.stacked.currentIndex()
-        if idx < self.stacked.count() - 1:
-            self.stacked.setCurrentIndex(idx + 1)
+        if idx in self.active_steps:
+            pos = self.active_steps.index(idx)
+            if pos < len(self.active_steps) - 1:
+                self.stacked.setCurrentIndex(self.active_steps[pos + 1])
         self.update_ui()
         
     def prev_step(self):
         idx = self.stacked.currentIndex()
-        if idx > 0:
-            if idx == 1 or idx == 2:
-                self.stacked.setCurrentIndex(0)
+        if idx in self.active_steps:
+            pos = self.active_steps.index(idx)
+            if pos > 0:
+                self.stacked.setCurrentIndex(self.active_steps[pos - 1])
             else:
-                self.stacked.setCurrentIndex(idx - 1)
+                self.stacked.setCurrentIndex(0)
         self.update_ui()
         
     def update_ui(self):
@@ -319,11 +372,29 @@ class MainWindow(QWidget):
             self.btn_prev.show()
             self.sidebar.show()
             
-            if idx == self.stacked.count() - 1:
+            if idx == self.active_steps[-1]:
                 self.btn_next.hide()
             else:
                 self.btn_next.show()
                 self.btn_next.setText("Sonraki Adım")
+                
+            # Sidebar texts
+            if self.workflow_mode == "boundary_only":
+                self.step_labels[1].setText("1. Harita ve Deniz Boyama")
+                self.step_labels[4].setText("2. Bölge Üretimi")
+                self.step_labels[5].setText("3. Vilayet Üretimi")
+                self.boundary_inst.setText("🎯 Adım 1: Siyah-beyaz haritanızı yükleyin. Ardından farenizle DENİZ olan bölgelere bir kez sol tıklayın!")
+            else:
+                self.step_labels[0].setText("1. Temel Harita")
+                self.step_labels[1].setText("2. Sınırlar")
+                self.step_labels[2].setText("3. Yoğunluk (Ops.)")
+                self.step_labels[3].setText("4. Arazi (Ops.)")
+                self.step_labels[4].setText("5. Bölge Üretimi")
+                self.step_labels[5].setText("6. Vilayet Üretimi")
+                self.boundary_inst.setText("🎯 Adım 2: Varsa ülke veya eyalet sınırlarınızı belirten siyah çizgili (RGB: 0,0,0) görseli yükleyin.")
+                
+            for i, lbl in enumerate(self.step_labels):
+                lbl.setVisible((i + 1) in self.active_steps)
             
             # highlight sidebar step
             for i, lbl in enumerate(self.step_labels):

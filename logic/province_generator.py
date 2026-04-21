@@ -167,6 +167,12 @@ def generate_province_map(main_layout):
         valid = province_pmap >= 0
         out[valid] = color_lut[province_pmap[valid]]
     province_image = Image.fromarray(out)
+    
+    if boundary_mask is not None:
+        arr = np.array(province_image)
+        arr[boundary_mask] = config.BOUNDARY_COLOR
+        province_image = Image.fromarray(arr)
+        
     step(1)
 
     # Assign terrain from terrain image, or use defaults

@@ -17,13 +17,13 @@ def import_image(layout, text, image_display):
     imported_image = Image.open(path).convert("RGBA")
     image_display.set_image(imported_image)
 
-    # When importing a new land or boundary image, reset density (dimensions may differ)
-    layout.density_image = None
-    layout.density_image_display.set_image(None)
-    layout.button_normalize_density.setEnabled(True)
-    layout.button_equator_density.setEnabled(True)
-
-    layout.check_territory_ready()
+    # Automatically apply uniform density so the user doesn't have to do it manually.
+    from logic.density_generator import normalize_density
+    normalize_density(layout)
+    
+    if hasattr(layout, 'button_normalize_density'):
+        layout.button_normalize_density.setEnabled(True)
+        layout.button_equator_density.setEnabled(True)
 
 
 def import_terrain_image(layout):

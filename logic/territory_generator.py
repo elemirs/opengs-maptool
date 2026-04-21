@@ -31,7 +31,7 @@ def generate_territory_map(main_layout):
 
     land_points = main_layout.territory_land_slider.value()
     sea_points = main_layout.territory_ocean_slider.value()
-    has_sea = sea_points > 0 and land_image is not None
+    has_sea = sea_points > 0 and (masks.get("sea_mask") is not None and masks["sea_mask"].any())
 
     sea_step_budget = STEPS_PER_REGION_MAP if has_sea else 2
     total_steps = 2 + STEPS_PER_REGION_MAP + sea_step_budget + 2
@@ -65,6 +65,14 @@ def generate_territory_map(main_layout):
     territory_image, combined_pmap = combine_maps(
         land_map, sea_map, metadata, masks["land_mask"], masks["sea_mask"]
     )
+    
+    boundary_mask = masks.get("boundary_mask")
+    if boundary_mask is not None:
+        arr = np.array(territory_image)
+        arr[boundary_mask] = config.BOUNDARY_COLOR
+        from PIL import Image
+        territory_image = Image.fromarray(arr)
+        
     step(1)
 
     main_layout.territory_image_display.set_image(territory_image)
