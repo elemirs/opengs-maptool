@@ -366,7 +366,7 @@ class MainWindow(QWidget):
         drow.addLayout(col2)
         layout.addLayout(drow)
         
-        self.button_gen_territories = create_button(layout, "Bölgeleri Oluştur", lambda: generate_territory_map(self))
+        self.button_gen_territories = create_button(layout, "Bölgeleri Oluştur", self._on_generate_territory)
         self.button_gen_territories.setProperty("i18n", "btn_gen_terr")
         self.button_gen_territories.setEnabled(False)
         self.button_gen_territories.setObjectName("navButtonAction")
@@ -415,7 +415,7 @@ class MainWindow(QWidget):
         drow.addLayout(col2)
         layout.addLayout(drow)
         
-        self.button_gen_prov = create_button(layout, "Vilayetleri Oluştur", lambda: generate_province_map(self))
+        self.button_gen_prov = create_button(layout, "Vilayetleri Oluştur", self._on_generate_province)
         self.button_gen_prov.setProperty("i18n", "btn_gen_prov")
         self.button_gen_prov.setEnabled(False)
         self.button_gen_prov.setObjectName("navButtonAction")
@@ -427,6 +427,39 @@ class MainWindow(QWidget):
         self.button_exp_prov_def.setProperty("i18n", "btn_exp_data")
         self.button_exp_prov_def.setEnabled(False)
         self.stacked.addWidget(page)
+        
+    def _on_generate_territory(self):
+        self.button_gen_territories.setEnabled(False)
+        res = generate_territory_map(self)
+        if res:
+            self.territory_image_display.set_image(res["territory_image"])
+            self.territory_data = res["metadata"]
+            self.territory_pmap = res["combined_pmap"]
+            self.cached_masks = res["masks"]
+            
+            self.progress.setValue(100)
+            self.button_gen_prov.setEnabled(True)
+            self.button_exp_terr_img.setEnabled(True)
+            self.button_exp_terr_def.setEnabled(True)
+            
+            self.province_data = None
+            self.button_exp_prov_img.setEnabled(False)
+            self.button_exp_prov_def.setEnabled(False)
+            self.button_exp_terr_hist.setEnabled(False)
+        self.button_gen_territories.setEnabled(True)
+        
+    def _on_generate_province(self):
+        self.button_gen_prov.setEnabled(False)
+        res = generate_province_map(self)
+        if res:
+            self.province_image_display.set_image(res["province_image"])
+            self.province_data = res["metadata"]
+            
+            self.progress.setValue(100)
+            self.button_exp_prov_img.setEnabled(True)
+            self.button_exp_prov_def.setEnabled(True)
+            self.button_exp_terr_hist.setEnabled(True)
+        self.button_gen_prov.setEnabled(True)
         
     def start_workflow(self, mode):
         self.workflow_mode = mode

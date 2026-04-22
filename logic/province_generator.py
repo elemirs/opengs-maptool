@@ -190,16 +190,12 @@ def generate_province_map(main_layout):
             else:
                 prov["province_terrain"] = config.DEFAULT_TERRAIN_LAND
 
-    main_layout.province_image_display.set_image(province_image)
-    main_layout.province_data = all_metadata
-    step(1)
+    results = {
+        "province_image": province_image,
+        "metadata": all_metadata
+    }
 
-    main_layout.progress.setValue(100)
-    main_layout.button_exp_prov_img.setEnabled(True)
-    main_layout.button_exp_prov_def.setEnabled(True)
-    main_layout.button_exp_terr_hist.setEnabled(True)
-
-    return province_image, all_metadata
+    return results
 
 
 def _distribute(territories, total_provinces, pixel_counts,

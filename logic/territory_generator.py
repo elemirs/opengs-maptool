@@ -75,23 +75,15 @@ def generate_territory_map(main_layout):
         
     step(1)
 
-    main_layout.territory_image_display.set_image(territory_image)
-    main_layout.territory_data = metadata
-    main_layout.territory_pmap = combined_pmap
-    main_layout.cached_masks = masks
-    step(1)
+    # Do not set image and UI components here, return them instead.
+    # UI will be updated in MainWindow.
+    
+    # Pack results
+    results = {
+        "territory_image": territory_image,
+        "metadata": metadata,
+        "combined_pmap": combined_pmap,
+        "masks": masks
+    }
 
-    main_layout.progress.setValue(100)
-
-    # Enable province generation and territory image export
-    main_layout.button_gen_prov.setEnabled(True)
-    main_layout.button_exp_terr_img.setEnabled(True)
-    main_layout.button_exp_terr_def.setEnabled(True)
-
-    # Reset province state if re-generating territories
-    main_layout.province_data = None
-    main_layout.button_exp_prov_img.setEnabled(False)
-    main_layout.button_exp_prov_def.setEnabled(False)
-    main_layout.button_exp_terr_hist.setEnabled(False)
-
-    return territory_image, metadata
+    return results

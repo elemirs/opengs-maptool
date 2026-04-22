@@ -92,7 +92,14 @@ def lloyd_relaxation(mask, point_seeds, rng_seed=None, iterations=4, step_fn=Non
 
     for _ in range(iterations):
         tree = cKDTree(seeds_arr)
-        _, labels = tree.query(sample_xy, k=1)
+        
+        chunk_size = 500_000
+        labels = np.zeros(len(sample_xy), dtype=np.int32)
+        for chunk_start in range(0, len(sample_xy), chunk_size):
+            chunk_end = min(chunk_start + chunk_size, len(sample_xy))
+            _, chunk_labels = tree.query(sample_xy[chunk_start:chunk_end], k=1)
+            labels[chunk_start:chunk_end] = chunk_labels
+            QApplication.processEvents()
 
         counts = np.bincount(labels, minlength=len(seeds_arr))
         sum_x = np.bincount(labels, weights=sample_xy[:, 0], minlength=len(seeds_arr))
@@ -161,22 +168,49 @@ def _remove_enclaves(pmap, mask):
     Smaller fragments are cleared and then filled from their nearest
     assigned neighbor, eliminating enclaves.
     """
-    unique_ids = np.unique(pmap[mask])
-    unique_ids = unique_ids[unique_ids >= 0]
+    valid_mask = mask & (pmap >= 0)
+    if not valid_mask.any():
+        return
+
+    # Find the range of IDs to shift to 1-indexed for find_objects
+    min_id = np.min(pmap[valid_mask])
+    labeled_pmap = np.zeros(pmap.shape, dtype=np.int32)
+    labeled_pmap[valid_mask] = pmap[valid_mask] - min_id + 1
+
+    from scipy.ndimage import find_objects
+    slices = find_objects(labeled_pmap)
 
     cleared = np.zeros(pmap.shape, dtype=bool)
 
-    for rid in unique_ids:
-        region_mask = pmap == rid
+    for i, slc in enumerate(slices):
+        if i % 100 == 0:
+            from PyQt6.QtWidgets import QApplication
+            QApplication.processEvents()
+
+        if slc is None:
+            continue
+            
+        rid = i + min_id
+        # Extract only the bounding box of the current territory
+        region_mask = pmap[slc] == rid
         labeled, n = ndlabel(region_mask)
         if n <= 1:
             continue
-        # Keep only the largest component
+            
+        # Keep only the largest component within the bounding box
         comp_sizes = np.bincount(labeled.ravel())[1:]  # skip background 0
+        if len(comp_sizes) == 0:
+            continue
+            
         largest = comp_sizes.argmax() + 1
         small = region_mask & (labeled != largest)
-        pmap[small] = -1
-        cleared |= small
+        
+        # Apply to views of the original arrays
+        pmap_view = pmap[slc]
+        pmap_view[small] = -1
+        
+        cleared_view = cleared[slc]
+        cleared_view[small] = True
 
     # Fill cleared pixels from nearest assigned neighbor
     if cleared.any() and (pmap >= 0).any():
@@ -224,8 +258,17 @@ def assign_regions(mask, seeds, start_index, jagged=False):
             query_xy = _jitter_coords(coords_xy, coords_yx,
                                       jitter_x, jitter_y)
         tree = cKDTree(seeds_arr)
-        _, labels = tree.query(query_xy, k=1)
+        
+        chunk_size = 500_000
+        labels = np.zeros(len(query_xy), dtype=np.int32)
+        for chunk_start in range(0, len(query_xy), chunk_size):
+            chunk_end = min(chunk_start + chunk_size, len(query_xy))
+            _, chunk_labels = tree.query(query_xy[chunk_start:chunk_end], k=1)
+            labels[chunk_start:chunk_end] = chunk_labels
+            QApplication.processEvents()
+            
         pmap[coords_yx[:, 0], coords_yx[:, 1]] = labels + start_index
+        QApplication.processEvents()
     else:
         # Map each seed to its component
         comp_seeds = {}
@@ -250,11 +293,20 @@ def assign_regions(mask, seeds, start_index, jagged=False):
 
             local_seeds = seeds_arr[seed_indices]
             tree = cKDTree(local_seeds)
-            _, labels = tree.query(query_xy, k=1)
+            
+            # Chunk the query to avoid UI freezing on massive maps
+            chunk_size = 500_000
+            labels = np.zeros(len(query_xy), dtype=np.int32)
+            for chunk_start in range(0, len(query_xy), chunk_size):
+                chunk_end = min(chunk_start + chunk_size, len(query_xy))
+                _, chunk_labels = tree.query(query_xy[chunk_start:chunk_end], k=1)
+                labels[chunk_start:chunk_end] = chunk_labels
+                QApplication.processEvents()
 
             global_indices = np.array(seed_indices, dtype=np.int32)
             pmap[coords_yx[:, 0], coords_yx[:, 1]] = (
                 global_indices[labels] + start_index)
+            QApplication.processEvents()
 
         # Fill seedless components via nearest assigned pixel
         unassigned = mask & (pmap < 0)

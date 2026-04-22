@@ -24,3 +24,9 @@ ENV/
 
 # AI artifacts
 CLAUDE.md
+
+# Build artifacts
+build/
+release/
+dist/
+*.spec
