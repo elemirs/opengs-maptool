@@ -117,6 +117,9 @@ class MainWindow(QWidget):
         self.workflow_mode = "standard"
         self.active_steps = [1, 2, 3, 4, 5, 6]
         
+        self.undo_stack = []
+        self.redo_stack = []
+        
         # --- SETUP WIZARD PAGES ---
         self.setup_welcome_page()
         self.setup_land_page()
@@ -249,6 +252,33 @@ class MainWindow(QWidget):
         btn_bd_up.setProperty("i18n", "btn_upload_bound")
         self.stacked.addWidget(page)
         
+        from PyQt6.QtGui import QShortcut, QKeySequence
+        self.shortcut_undo = QShortcut(QKeySequence("Ctrl+Z"), self)
+        self.shortcut_undo.activated.connect(self.undo_action)
+        
+        self.shortcut_redo = QShortcut(QKeySequence("Ctrl+Shift+Z"), self)
+        self.shortcut_redo.activated.connect(self.redo_action)
+
+    def undo_action(self):
+        if self.stacked.currentIndex() == 2 and self.undo_stack:
+            current_image = self.boundary_image_display.get_image()
+            if current_image:
+                self.redo_stack.append(current_image.copy())
+            
+            prev_image = self.undo_stack.pop()
+            self.boundary_image_display.set_image(prev_image, reset_view=False)
+            self.check_territory_ready()
+
+    def redo_action(self):
+        if self.stacked.currentIndex() == 2 and self.redo_stack:
+            current_image = self.boundary_image_display.get_image()
+            if current_image:
+                self.undo_stack.append(current_image.copy())
+            
+            next_image = self.redo_stack.pop()
+            self.boundary_image_display.set_image(next_image, reset_view=False)
+            self.check_territory_ready()
+            
     def on_boundary_click(self, x, y):
         input_image = self.boundary_image_display.get_image()
         if not input_image:
@@ -277,6 +307,12 @@ class MainWindow(QWidget):
         if click_label == 0:
             return
             
+        # Save state before modifying
+        self.undo_stack.append(input_image.copy())
+        if len(self.undo_stack) > 50:
+            self.undo_stack.pop(0)
+        self.redo_stack.clear()
+            
         ocean_mask = labeled == click_label
         
         # Color it Ocean Blue
@@ -287,7 +323,7 @@ class MainWindow(QWidget):
             arr[ocean_mask, 3] = 255
             
         new_img = Image.fromarray(arr)
-        self.boundary_image_display.set_image(new_img)
+        self.boundary_image_display.set_image(new_img, reset_view=False)
         self.check_territory_ready()
         
     def setup_density_page(self):

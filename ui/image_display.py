@@ -20,7 +20,7 @@ class ImageDisplay(QWidget):
         self._last_mouse_pos = QPointF()
         self._dragged = False
 
-    def set_image(self, image):
+    def set_image(self, image, reset_view=True):
         if image is None:
             self._image = None
             self._pixmap = None
@@ -36,7 +36,10 @@ class ImageDisplay(QWidget):
             QImage.Format.Format_RGBA8888
         )
         self._pixmap = QPixmap.fromImage(qimage)
-        self._fit_to_window()
+        
+        if reset_view or self.scale_factor == 1.0 and self.pan_offset == QPointF(0, 0):
+            self._fit_to_window()
+            
         self.update()
 
     def _fit_to_window(self):
